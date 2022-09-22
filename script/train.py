@@ -106,14 +106,17 @@ if __name__ == '__main__':
     src_path_val = "../data/frames_val/"
     src_path_test = "../data/frames_test/"
 
-    #Size of our input images
-    SIZE = 127
-    # model parameters
-    FILTERS = 256
+   
+    # image_size 
     SIZE = 227
-    ACTIVATION = 'relu'
+    # model parameters
+    FILTERS = 128
+    ACTIVATION = 'tanh'
     BATCH_SIZE = 10
-    EPOCHS = 3
+    EPOCHS = 5
+
+    # model name
+    model_name = 'model.h5'
 
     # initializing ImageDataGenerator
     datagen = ImageDataGenerator(rescale=1./255)
@@ -152,8 +155,10 @@ if __name__ == '__main__':
     AutoEncoder_model = AutoEncoder3D(FILTERS, SIZE, ACTIVATION)
     model = AutoEncoder_model.autoencoder()
     print(model.summary())
-
+    
+    #model_name = 'model.h5'
     # loading weights:
+
     #model.load_weights(path_model+'/'+model_name)
 
     initial_learning_rate = 0.00001
@@ -165,9 +170,10 @@ if __name__ == '__main__':
 
     # compling the model
     model.compile(optimizer=keras.optimizers.Adam(lr_schedule), 
-                loss='mean_squared_error',metrics=['accuracy','mean_squared_error'])
+                loss='mean_squared_error',metrics=['accuracy'])
 
     cb = [
+        tf.keras.callbacks.ModelCheckpoint(path_model+'/'+model_name),
         tf.keras.callbacks.ModelCheckpoint(path_checkpoint),
         tf.keras.callbacks.CSVLogger(path_metrics+'/'+'data.csv'),
         tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=1001, restore_best_weights=False)]   
@@ -182,6 +188,17 @@ if __name__ == '__main__':
     # save the model
 
     model.save(path_model+'/'+'model.h5')
+
+    # calculating losses!
+
+    train_loss, train_acc, train_MSE = model.evaluate(x_train, y_train)
+    print('\n','Evaluation of Training dataset:','\n''\n','train_loss:',round(train_loss,3),'\n','train_acc:',round(train_acc,3),'\n', 'train_MSE:',round(train_MSE,3))
+    
+    val_loss, val_acc, val_MSE = model.evaluate(x_val, y_val)
+    print('\n','Evaluation of Validation dataset:','\n''\n','val_loss:',round(val_loss,3),'\n','val_acc:',round(val_acc,3),'\n', 'val_MSE:',round(val_MSE,3))
+
+    test_loss, test_acc, test_MSE = model.evaluate(x_test, y_test)
+    print('\n','Evaluation of Testing dataset:','\n''\n','test_loss:',round(test_loss,3),'\n','test_acc:',round(test_acc,3),'\n', 'test_MSE:',round(test_MSE,3))
 
     # reading the data.csv where all the epoch training scores are stored
     df = pd.read_csv(path_metrics+'/'+'data.csv')   
