@@ -16,7 +16,7 @@ image_gray = []
 def data_preprocessing(image):
     
     img=img_to_array(image)
-    img=resize(img,(227,227,3))
+    img=resize(img,(127,127,3))
     gray_img=0.2989*img[:,:,0]+0.5870*img[:,:,1]+0.1140*img[:,:,2]
     gray_img_scaled = scaler.fit_transform(gray_img)
     image_gray.append(gray_img_scaled)
@@ -28,9 +28,9 @@ if __name__ == '__main__':
     scaler = MinMaxScaler()
 
     # path to the images
-    src_path_train = "../data/frames_train/img_tr/"
-    src_path_val = "../data/frames_val/img_val/"
-    src_path_test = "../data/frames_test/img_te/"
+    src_path_train = "../data/4fps/frames_train/"
+    src_path_val = "../data/4fps/frames_val/"
+    src_path_test = "../data/4fps/frames_test/"
 
     # image to numpy transformation
     folder_dir = [src_path_train, src_path_val, src_path_test]
@@ -43,7 +43,7 @@ if __name__ == '__main__':
         nr_img, x_size, y_size = gray_npimg.shape
         gray_npimg.resize(x_size, y_size,nr_img)
         gray_npimg=np.clip(gray_npimg,0,1)
-        np.save('../data/'+names, gray_npimg)
+        np.save('../data/4fps/'+names, gray_npimg)
 
 
 
