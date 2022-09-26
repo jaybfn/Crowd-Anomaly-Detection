@@ -23,6 +23,8 @@ from numpy.random import seed
 
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, UpSampling2D
 from keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras import backend as K
 from tensorflow.keras.metrics import MeanIoU
@@ -112,7 +114,7 @@ if __name__ == '__main__':
     src_path_test = "../data/4fps/frames_test/"
 
     # image_size 
-    SIZE = 128
+    SIZE = 256
     # model parameters
     FILTERS = 128
     ACTIVATION = 'tanh'
@@ -120,8 +122,7 @@ if __name__ == '__main__':
     EPOCHS = 200
     n_classes = 1
     IMAGE_CHANNELS  = 1
-    IMAGE_WIDTH = SIZE
-    IMAGE_HEIGHT = SIZE
+
    
 
     # model name
@@ -155,17 +156,27 @@ if __name__ == '__main__':
         color_mode = 'grayscale'
         )
 
-    # defining the loss function:
-    dice_loss = sm.losses.DiceLoss()
-    focal_loss = sm.losses.CategoricalFocalLoss()
-    total_loss = dice_loss + (1*focal_loss)
 
-    metrics = [sm.metrics.IOUScore(threshold = 0.5), sm.metrics.FScore(threshold = 0.5),'accuracy', 'Recall', 'Precision']
+    model = Sequential()
+    model.add(Conv2D(64, (3, 3), activation='relu', padding='same', input_shape=(SIZE, SIZE, 1)))
+    model.add(MaxPooling2D((2, 2), padding='same'))
+    model.add(Conv2D(32, (3, 3), activation='relu', padding='same'))
+    model.add(MaxPooling2D((2, 2), padding='same'))
+    model.add(Conv2D(16, (3, 3), activation='relu', padding='same'))
+    model.add(MaxPooling2D((2, 2), padding='same'))
 
-    # load the model
-    model = UNET(n_classes, IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_CHANNELS)
-    print(model.summary())
+    #Decoder
+    model.add(Conv2D(16, (3, 3), activation='relu', padding='same'))
+    model.add(UpSampling2D((2, 2)))
+    model.add(Conv2D(32, (3, 3), activation='relu', padding='same'))
+    model.add(UpSampling2D((2, 2)))
+    model.add(Conv2D(64, (3, 3), activation='relu', padding='same'))
+    model.add(UpSampling2D((2, 2)))
 
+    model.add(Conv2D(1, (3, 3), activation='sigmoid', padding='same'))
+
+    model.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy','mse'])
+    model.summary()
 
     
     #model_name = 'model.h5'
@@ -179,11 +190,6 @@ if __name__ == '__main__':
         decay_steps=10000,
         decay_rate=0.96,
         staircase=True)
-
-    # model compiling:
-    model.compile(optimizer = Adam(learning_rate = lr_schedule),
-                    loss = total_loss, 
-                    metrics = metrics)
 
     cb = [
         tf.keras.callbacks.ModelCheckpoint(path_model+'/'+model_name),
@@ -202,40 +208,22 @@ if __name__ == '__main__':
 
     model.save(path_model+'/'+'model.h5')
 
-    # evaluating validation and testing dataset
+    
+    # # # calculating losses!
 
-    print("____________________________________________________________")
-    print("____________________________________________________________")
-    print("____________________________________________________________")
-    train_IoU = model.evaluate(train_generator,
-                                    batch_size = BATCH_SIZE)
-    print("Train IoU is = ", (train_IoU[1] * 100.0), "%")
-
-    val_IoU = model.evaluate(validation_generator,
-                                    batch_size = BATCH_SIZE)
-    print("Val IoU is = ", (val_IoU[1] * 100.0), "%")
-
-    print("____________________________________________________________")
-    print("____________________________________________________________")
-    print("____________________________________________________________")
-
-    # # calculating losses!
-
-    # train_loss, train_acc, train_MSE = model.evaluate(x_train, y_train)
+    # train_loss, train_acc, train_MSE = model.evaluate(train_generator)
     # print('\n','Evaluation of Training dataset:','\n''\n','train_loss:',round(train_loss,3),'\n','train_acc:',round(train_acc,3),'\n', 'train_MSE:',round(train_MSE,3))
     
-    # val_loss, val_acc, val_MSE = model.evaluate(x_val, y_val)
+    # val_loss, val_acc, val_MSE = model.evaluate(validation_generator)
     # print('\n','Evaluation of Validation dataset:','\n''\n','val_loss:',round(val_loss,3),'\n','val_acc:',round(val_acc,3),'\n', 'val_MSE:',round(val_MSE,3))
 
-    # test_loss, test_acc, test_MSE = model.evaluate(x_test, y_test)
+    # test_loss, test_acc, test_MSE = model.evaluate(test_generator)
     # print('\n','Evaluation of Testing dataset:','\n''\n','test_loss:',round(test_loss,3),'\n','test_acc:',round(test_acc,3),'\n', 'test_MSE:',round(test_MSE,3))
 
-    # reading the data.csv where all the epoch training scores are stored
+    # # reading the data.csv where all the epoch training scores are stored
     df = pd.read_csv(path_metrics+'/'+'data.csv')   
 
 
-    metricplot(df,'epoch', 'accuracy', 'val_accuracy', path_metrics)
-    metricplot(df,'epoch', 'iou_score', 'val_iou_score', path_metrics)
-    metricplot(df,'epoch', 'loss', 'val_loss', path_metrics)
-    metricplot(df,'epoch', 'precision', 'val_precision', path_metrics)
-    metricplot(df,'epoch', 'recall', 'val_recall', path_metrics)
+    metricplot(df, 'epoch', 'loss','val_loss', path_metrics)
+    metricplot(df, 'epoch', 'accuracy','val_accuracy', path_metrics)
+    metricplot(df, 'epoch', 'train_MSE','val_MSE', path_metrics)
